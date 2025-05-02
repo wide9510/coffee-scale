@@ -35,6 +35,7 @@ static bool setRegister(uint8_t registerAddress, uint8_t value)
 //Returns true upon completion
 bool begin(bool initialize)
 {
+   // TODO: remove
    k_busy_wait(1000); //Wait for the I2C bus to stabilize
 
   //Check if the device ack's over I2C
@@ -50,13 +51,10 @@ bool begin(bool initialize)
   if (initialize)
   {
     result &= reset(); //Reset all registers
-    printk("Reset: %s\n", result ? "Success" : "Failure");
 
     result &= powerUp(); //Power on analog and digital sections of the scale
-    printk("Power Up: %s\n", result ? "Success" : "Failure");
 
     result &= setLDO(NAU7802_LDO_3V3); //Set LDO to 3.3V
-    printk("Set LDO: %s\n", result ? "Success" : "Failure");
 
     result &= setGain(NAU7802_GAIN_128); //Set gain to 128
 
