@@ -14,5 +14,6 @@
 #define NVS_PARTITION_OFFSET  FIXED_PARTITION_OFFSET(NVS_PARTITION)
 
 void init_nvs(void);
+void load_nvs_data(void);
 
 #endif   // NVS_H

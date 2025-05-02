@@ -7,6 +7,7 @@ target_sources(app PRIVATE
    src/main.c 
    src/nau7802.c 
    src/button.c
-   src/nvs.c)
+   src/nvs.c
+   src/loadcell.c)
 
 
