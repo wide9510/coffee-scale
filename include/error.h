@@ -3,14 +3,14 @@
 
 // #include <zephyr/logging/log.h>
 
-// #define EXPECT_OK(expr, err_code) \
+/*#define EXPECT_OK(expr, err_code) \
 //     do { \
 //         if ((expr) <= 0) { \
 //             LOG_ERR("Failed at %s:%d (%s)", __FILE__, __LINE__, #expr); \
 //             return (err_code); \
 //         } \
 //     } while (0)
-
+*/
 typedef enum {
     STATUS_OK = 0,
     ERR_DEV_NOT_READY,

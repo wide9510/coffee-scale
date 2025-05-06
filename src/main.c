@@ -1,34 +1,38 @@
 #include <zephyr/kernel.h>
-#include "error.h"
+#include <zephyr/device.h>
+#include "scale.h"
+#include "display.h"
 #include "button.h"
 #include "nvs.h"
-#include "loadcell.h"
 
+#define WEIGHT_THREAD_PRIORITY 1
+#define DISPLAY_THREAD_PRIORITY 5
+#define STACK_SIZE 4096
+ 
 
-int main(void)
+void weight_thread(void)
 {
-   if(!loadcell_init()) {
-      printk("Loadcell initialization failed\n");
-      return -1;
-   }
-
+   // Set up buttons with their ISRs
    init_tare_button();
    init_calibration_button();
-   init_clear_tare_button();
 
+   // Prepare the file system 
    init_nvs();
-   load_nvs_data();
+   // load_nvs_data();
 
-   while (1) {
-      if(loadcell_available()) {
-         float weight;
-         get_grams_value(&weight);
-
-         printk("\033[2J"); // Clear screen
-         printk("\033[H");  // Move cursor to top-left
-         printk("%.2f g\n", (double)weight);
-      }
-      k_sleep(K_MSEC(100));
-   }
-   return 0;
+   // Initialize and start collecting data from the load cell
+   scale_run();
 }
+
+void display_thread(void)
+{
+   display_run();
+}
+
+K_THREAD_DEFINE(weight_thread_id, STACK_SIZE,
+      weight_thread, NULL, NULL, NULL,
+      WEIGHT_THREAD_PRIORITY, 0, 0);
+
+K_THREAD_DEFINE(display_thread_id, STACK_SIZE,
+      display_thread, NULL, NULL, NULL,
+      DISPLAY_THREAD_PRIORITY, 0, 0);

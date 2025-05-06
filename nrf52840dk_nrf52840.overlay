@@ -20,4 +20,21 @@
       reg = <0x2a>;
       label = "NAU7802"; 
    };
+
+   ssd1306: ssd1306@3c {
+      compatible = "solomon,ssd1306fb";
+      reg = <0x3c>;
+      width = <128>;
+      height = <64>;
+      segment-offset = <0>;
+      //invert x
+      segment-remap;
+      // invert y
+      com-invdir;
+      page-offset = <0>;
+      display-offset = <0>;
+      multiplex-ratio = <63>;
+      prechargep = <0xF1>;
+      // reset-gpios = <&gpio0 10 GPIO_ACTIVE_LOW>; // Optional: if you have a reset pin
+  };
 };

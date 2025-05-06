@@ -4,54 +4,46 @@
 #include <zephyr/fs/nvs.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
+#include "nau7802.h"
 // LOG_MODULE_REGISTER(error_handling, LOG_LEVEL_ERR);
 
 struct gpio_callback tare_cb_data,
                  calibration_cb_data,
                  clear_tare_cb_data;
 
+static struct k_work calibration_work;
+static struct k_work tare_work;
+
 static const struct gpio_dt_spec tare_button = GPIO_DT_SPEC_GET(TARE_BUTTON, gpios);
 static const struct gpio_dt_spec calibration_button = GPIO_DT_SPEC_GET(CALIBRATION_BUTTON, gpios);
-static const struct gpio_dt_spec clear_tare_button = GPIO_DT_SPEC_GET(CLEAR_TARE_BUTTON, gpios);
 
-extern float tare,
-             last_average,
-             calibration;
+bool isCalibrated = false;
 
 extern struct nvs_fs fs;
 
+void tare_work_handler(struct k_work *work)
+{
+   calculateZeroOffset(1,10);
+   int32_t tare = getZeroOffset();
+   write_tare(tare);
+}
+
 static void tare_button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
-    tare = last_average;
-    int rc = nvs_write(&fs, STORAGE_ID_TARE, &tare, sizeof(tare));
-    if (rc < 0) {
-        printk("Failed to write tare: %d\n", rc);
-    } else {
-        printk("Tare set to: %f\n", (double)tare);
-    }
+   k_work_submit(&tare_work);
 }
+
+void calibration_work_handler(struct k_work *work)
+{
+   calculateCalibrationFactor(144, 1, 10);
+   float calibration = getCalibrationFactor();
+   write_calibration_factor(calibration);
+}
+
 static void calibration_button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
-    calibration = (last_average - tare)/144.0f;
-    int rc = nvs_write(&fs, STORAGE_ID_CALIBRATION, &calibration, sizeof(calibration));
-    if (rc < 0) {
-        printk("Failed to write calibration: %d\n", rc);
-    } else {
-        printk("Calibration set to: %f\n", (double)calibration);
-    }
+   k_work_submit(&calibration_work);
 }
-
-static void clear_tare_button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
-{
-    tare = 0;
-    int rc = nvs_write(&fs, STORAGE_ID_TARE, &tare, sizeof(tare));
-    if (rc < 0) {
-        printk("Failed to write tare: %d\n", rc);
-    } else {
-        printk("Tare cleared\n");
-    }
-}
-
 
 void init_button(const struct gpio_dt_spec* button, struct gpio_callback* cb_data, gpio_callback_handler_t handler)
 {
@@ -72,13 +64,11 @@ void init_button(const struct gpio_dt_spec* button, struct gpio_callback* cb_dat
 
 void init_tare_button()
 {  
-    init_button(&tare_button, &tare_cb_data, tare_button_pressed);
+   k_work_init(&tare_work, tare_work_handler);
+   init_button(&tare_button, &tare_cb_data, tare_button_pressed);
 }
 void init_calibration_button()
 {
-    init_button(&calibration_button, &calibration_cb_data, calibration_button_pressed);
-}
-void init_clear_tare_button()
-{
-   init_button(&clear_tare_button, &clear_tare_cb_data, clear_tare_button_pressed);
+   k_work_init(&calibration_work, calibration_work_handler);
+   init_button(&calibration_button, &calibration_cb_data, calibration_button_pressed);
 }

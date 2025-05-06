@@ -1,8 +1,6 @@
 #ifndef NVS_H
 #define NVS_H
 
-#include <zephyr/fs/nvs.h>
-#include <zephyr/devicetree.h>
 #include <zephyr/storage/flash_map.h>
 
 
@@ -15,5 +13,7 @@
 
 void init_nvs(void);
 void load_nvs_data(void);
+void write_calibration_factor(float calibration_factor);
+void write_tare(float tare_value);
 
 #endif   // NVS_H
