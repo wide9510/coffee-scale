@@ -10,10 +10,17 @@
 
 // For more help, browse the DeviceTree documentation at https://docs.zephyrproject.org/latest/guides/dts/index.html
 // You can also visit the nRF DeviceTree extension documentation at https://docs.nordicsemi.com/bundle/nrf-connect-vscode/page/guides/ncs_configure_app.html#devicetree-support-in-the-extension
+/ {
+   buttons {
+      debounce-interval-ms = <100>;   
+   };
+};
 
 &i2c0 {
 
    status = "okay";
+
+  
 
    nau7802: nau7802@2a {
       compatible = "nuvoton,nau7802";

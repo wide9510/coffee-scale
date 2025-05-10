@@ -1,0 +1,27 @@
+# .clang-format
+
+BasedOnStyle: LLVM
+
+IndentWidth: 3
+TabWidth: 4
+UseTab: Never
+
+ColumnLimit: 80
+AllowShortFunctionsOnASingleLine: Inline
+DerivePointerAlignment: false
+PointerAlignment: Left
+
+BreakBeforeBraces: Allman
+SpacesInParentheses: false
+SpaceAfterCStyleCast: true
+SpaceBeforeParens: ControlStatements
+
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignTrailingComments: true
+
+SortIncludes: true
+IncludeBlocks: Preserve
+
+Cpp11BracedListStyle: true
+Standard: Latest

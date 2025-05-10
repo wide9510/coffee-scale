@@ -18,6 +18,8 @@ static float getFlowRate(float weight, float last_weight, int32_t time, int32_t 
    return flow_rate;
 }
 
+extern struct k_mutex nau_mutex;
+
 void scale_run(void)
 {
    if(!begin(true)) {
@@ -41,6 +43,7 @@ void scale_run(void)
          time = k_uptime_get();
          // avg = getAverage(5, 75);
          weight = getWeight(true, 5, 75);
+
          int time_next = k_uptime_get();
 
          // float flow_rate = getFlowRate(weight, last_weight, time, last_time);
@@ -50,7 +53,7 @@ void scale_run(void)
          };
          k_msgq_put(&display_msgq, &data, K_NO_WAIT);
          
-         if(time - last_refresh > 75) {
+         if(time - last_refresh > 50) {
             printk("\033[2J"); // Clear screen
             printk("\033[H");  // Move cursor to top-left
             printk("Time taken: %d ms |   ", time_next - time);

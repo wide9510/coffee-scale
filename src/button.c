@@ -1,74 +1,80 @@
 #include "button.h"
-#include "error.h"
-#include "nvs.h"
-#include <zephyr/fs/nvs.h>
+
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/fs/nvs.h>
+
+#include "err_gpio.h"
+#include "error.h"
 #include "nau7802.h"
-// LOG_MODULE_REGISTER(error_handling, LOG_LEVEL_ERR);
+#include "nvs.h"
 
-struct gpio_callback tare_cb_data,
-                 calibration_cb_data,
-                 clear_tare_cb_data;
+#define TARE_BUTTON DT_ALIAS(sw0)
+#define CALIBRATION_BUTTON DT_ALIAS(sw1)
+#define CLEAR_TARE_BUTTON DT_ALIAS(sw2)
 
-static struct k_work calibration_work;
-static struct k_work tare_work;
+extern struct k_work_q workq;
+LOG_MODULE_REGISTER(button, LOG_LEVEL_ERR);
 
-static const struct gpio_dt_spec tare_button = GPIO_DT_SPEC_GET(TARE_BUTTON, gpios);
-static const struct gpio_dt_spec calibration_button = GPIO_DT_SPEC_GET(CALIBRATION_BUTTON, gpios);
+struct gpio_callback tare_cb_data, calibration_cb_data, clear_tare_cb_data;
 
-bool isCalibrated = false;
+static const struct gpio_dt_spec tare_button =
+    GPIO_DT_SPEC_GET(TARE_BUTTON, gpios);
+
+static const struct gpio_dt_spec calibration_button =
+    GPIO_DT_SPEC_GET(CALIBRATION_BUTTON, gpios);
 
 extern struct nvs_fs fs;
 
-void tare_work_handler(struct k_work *work)
+static void tare_work_handler(struct k_work* work)
 {
-   calculateZeroOffset(1,10);
-   int32_t tare = getZeroOffset();
-   write_tare(tare);
+   calculateZeroOffset(10, 1000);
+   write_tare(getZeroOffset());
+}
+K_WORK_DEFINE(tare_work, tare_work_handler);
+
+static void tare_button_pressed(const struct device*  dev,
+                                struct gpio_callback* cb, uint32_t pins)
+{
+   k_work_submit_to_queue(&workq, &tare_work);
 }
 
-static void tare_button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
+static void calibration_work_handler(struct k_work* work)
 {
-   k_work_submit(&tare_work);
+   calculateCalibrationFactor(144, 10, 1000);
+   write_calibration_factor(getCalibrationFactor());
 }
 
-void calibration_work_handler(struct k_work *work)
+K_WORK_DEFINE(calibration_work, calibration_work_handler);
+
+static void calibration_button_pressed(const struct device*  dev,
+                                       struct gpio_callback* cb, uint32_t pins)
 {
-   calculateCalibrationFactor(144, 1, 10);
-   float calibration = getCalibrationFactor();
-   write_calibration_factor(calibration);
+   k_work_submit_to_queue(&workq, &calibration_work);
 }
 
-static void calibration_button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
+status_t init_button(const struct gpio_dt_spec* button,
+                     struct gpio_callback*      cb_data,
+                     gpio_callback_handler_t    handler)
 {
-   k_work_submit(&calibration_work);
-}
-
-void init_button(const struct gpio_dt_spec* button, struct gpio_callback* cb_data, gpio_callback_handler_t handler)
-{
-   if(!device_is_ready(button->port)) {
-      printk ("GPIO device not ready\n");
-   }
-   int rc = gpio_pin_configure_dt(button, GPIO_INPUT);
-   if(rc < 0) {
-      printk("Failed to configure GPIO pin %d: %d\n", button->pin, rc);
-   }
-   rc = gpio_pin_interrupt_configure_dt(button, GPIO_INT_EDGE_TO_ACTIVE);
-   if(rc < 0) {
-      printk("Failed to configure GPIO interrupt for pin %d: %d\n", button->pin, rc);
-   }
+   device_is_ready(button->port);
+   EXPECT_OK(gpio_pin_configure_dt(button, GPIO_INPUT), convert_gpio_err);
+   EXPECT_OK(gpio_pin_interrupt_configure_dt(button, GPIO_INT_EDGE_TO_ACTIVE),
+             convert_gpio_err);
    gpio_init_callback(cb_data, handler, BIT(button->pin));
-   gpio_add_callback(button->port, cb_data);
+   EXPECT_OK(gpio_add_callback(button->port, cb_data), convert_gpio_err);
+   return STATUS_OK;
 }
 
-void init_tare_button()
-{  
-   k_work_init(&tare_work, tare_work_handler);
-   init_button(&tare_button, &tare_cb_data, tare_button_pressed);
-}
-void init_calibration_button()
+status_t init_tare_button()
 {
-   k_work_init(&calibration_work, calibration_work_handler);
-   init_button(&calibration_button, &calibration_cb_data, calibration_button_pressed);
+   EXPECT_OK(init_button(&tare_button, &tare_cb_data, tare_button_pressed));
+   return STATUS_OK;
+}
+
+status_t init_calibration_button()
+{
+   EXPECT_OK(init_button(&calibration_button, &calibration_cb_data,
+                         calibration_button_pressed));
+   return STATUS_OK;
 }
